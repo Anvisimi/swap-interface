@@ -41,8 +41,15 @@ export default function Home() {
 
   const getUSDValue = (token: Token | null, tokenAmount: string) => {
     if (!token || !tokenAmount || isNaN(parseFloat(tokenAmount))) return '$0.00';
-    const value = parseFloat(tokenAmount) * token.price;
-    return `$${value.toFixed(2)}`;
+    
+    const amountNum = parseFloat(tokenAmount);
+    if (token.symbol === 'USD') {
+      return `$${amountNum.toFixed(2)}`;
+    }
+    
+    // Convert to USD based on token price
+    const usdValue = amountNum * token.price;
+    return `$${usdValue.toFixed(2)}`;
   };
 
   const handleAmountChange = (value: string) => {
@@ -122,7 +129,6 @@ export default function Home() {
     token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
     token.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
   const TokenModal: React.FC<TokenModalProps> = ({ isOpen, onClose, onSelect }) => {
     if (!isOpen) return null;
 
