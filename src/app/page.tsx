@@ -1,12 +1,14 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Listbox, Transition } from '@headlessui/react';
-import { ChevronUpDownIcon } from '@heroicons/react/24/outline';
+import { ChevronUpDownIcon, XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 
 interface Token {
   symbol: string;
   price: number;
+  name?: string;
+  logoUrl?: string;
 }
 
 export default function Home() {
@@ -16,47 +18,31 @@ export default function Home() {
   const [amount, setAmount] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSelectingFrom, setIsSelectingFrom] = useState(false);
+  const [isSelectingTo, setIsSelectingTo] = useState(false);
 
   useEffect(() => {
     const fetchPrices = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        // Using the API route instead of direct URL
         const response = await axios.get('/api/prices');
-        console.log('Raw API response:', response.data);
-
+        
+        // Transform the data to match Uniswap-like format
         const validTokens = Object.entries(response.data)
-          .filter(([symbol, price]) => {
-            console.log(`Checking token ${symbol} with price ${price}`);
-            return price && Number(price) > 0;
-          })
-          .map(([symbol, price]) => {
-            console.log(`Adding token ${symbol} with price ${Number(price)}`);
-            return {
-              symbol,
-              price: Number(price)
-            };
-          });
+          .map(([symbol, price]) => ({
+            symbol,
+            price: Number(price),
+            name: symbol, // You can add full names if available
+            logoUrl: `https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/${symbol}.svg`
+          }))
+          .filter(token => !isNaN(token.price) && token.price > 0);
 
-        console.log('Processed tokens:', validTokens);
-        
-        if (validTokens.length === 0) {
-          setError('No valid tokens found after filtering');
-        }
-        
         setTokens(validTokens);
       } catch (error) {
         console.error('Error fetching prices:', error);
-        if (axios.isAxiosError(error)) {
-          if (error.response) {
-            setError(`API Error: ${error.response.data}`);
-          } else if (error.request) {
-            setError(`Network Error: ${error.message}`);
-          }
-        } else {
-          setError('An unexpected error occurred');
-        }
+        setError('Failed to load tokens');
       } finally {
         setIsLoading(false);
       }
@@ -65,11 +51,85 @@ export default function Home() {
     fetchPrices();
   }, []);
 
-  const handleSwap = () => {
-    if (!fromToken || !toToken || !amount) return;
-    
-    // Mock swap implementation
-    alert(`Swapping ${amount} ${fromToken.symbol} for ${toToken.symbol}`);
+  const filteredTokens = tokens.filter(token => 
+    token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    token.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const TokenModal = ({ 
+    isOpen, 
+    onClose, 
+    onSelect 
+  }: { 
+    isOpen: boolean; 
+    onClose: () => void; 
+    onSelect: (token: Token) => void;
+  }) => {
+    if (!isOpen) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="bg-gray-900 rounded-2xl w-full max-w-md p-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white">Select a token</h2>
+            <button onClick={onClose} className="text-white/50 hover:text-white">
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+
+          <div className="relative mb-4">
+            <input
+              type="text"
+              className="w-full bg-gray-800 rounded-lg pl-10 pr-4 py-3 text-white placeholder-white/50 outline-none"
+              placeholder="Search token name or paste address"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50" />
+          </div>
+
+          <div className="max-h-[400px] overflow-y-auto">
+            {isLoading ? (
+              <div className="p-4 text-center text-white">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
+                <p className="mt-2">Loading tokens...</p>
+              </div>
+            ) : filteredTokens.length > 0 ? (
+              <div className="space-y-2">
+                {filteredTokens.map((token) => (
+                  <button
+                    key={token.symbol}
+                    className="w-full flex items-center p-3 hover:bg-white/5 rounded-lg transition-colors"
+                    onClick={() => {
+                      onSelect(token);
+                      onClose();
+                      setSearchQuery('');
+                    }}
+                  >
+                    <img
+                      src={token.logoUrl}
+                      alt={token.symbol}
+                      className="w-8 h-8 mr-3"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/DEFAULT.svg';
+                      }}
+                    />
+                    <div className="text-left">
+                      <div className="text-white font-medium">{token.symbol}</div>
+                      <div className="text-white/50 text-sm">{token.name}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-white/50 py-8">
+                No tokens found
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -83,118 +143,68 @@ export default function Home() {
           </div>
         )}
         
-        {/* From Token Selection */}
-        <div className="space-y-4 mb-4">
-          <Listbox value={fromToken} onChange={setFromToken}>
-            <div className="relative">
-              <Listbox.Button className="w-full bg-white/5 rounded-lg p-4 text-left text-white flex justify-between items-center">
-                <span>{fromToken?.symbol || 'Select token'}</span>
-                <ChevronUpDownIcon className="h-5 w-5" />
-              </Listbox.Button>
-              <Transition
-                enter="transition duration-100 ease-out"
-                enterFrom="transform scale-95 opacity-0"
-                enterTo="transform scale-100 opacity-100"
-                leave="transition duration-75 ease-out"
-                leaveFrom="transform scale-100 opacity-100"
-                leaveTo="transform scale-95 opacity-0"
-              >
-                <Listbox.Options className="absolute z-10 w-full mt-1 bg-white/10 backdrop-blur-lg rounded-lg py-1 max-h-60 overflow-auto">
-                  {isLoading ? (
-                    <div className="p-4 text-white text-center">
-                      <svg className="animate-spin h-5 w-5 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Loading tokens...
-                    </div>
-                  ) : tokens.length > 0 ? (
-                    tokens.map((token) => (
-                      <Listbox.Option
-                        key={token.symbol}
-                        value={token}
-                        className={({ active }) =>
-                          `${
-                            active ? 'bg-white/20' : ''
-                          } cursor-pointer select-none p-4 text-white`
-                        }
-                      >
-                        {token.symbol}
-                      </Listbox.Option>
-                    ))
-                  ) : (
-                    <div className="p-4 text-white text-center">
-                      {error ? 'Error loading tokens' : 'No tokens available'}
-                    </div>
-                  )}
-                </Listbox.Options>
-              </Transition>
-            </div>
-          </Listbox>
+        <div className="space-y-4">
+          <button
+            onClick={() => setIsSelectingFrom(true)}
+            className="w-full bg-white/5 hover:bg-white/10 rounded-lg p-4 text-left text-white flex items-center justify-between"
+          >
+            {fromToken ? (
+              <div className="flex items-center">
+                <img
+                  src={fromToken.logoUrl}
+                  alt={fromToken.symbol}
+                  className="w-6 h-6 mr-2"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/DEFAULT.svg';
+                  }}
+                />
+                <span>{fromToken.symbol}</span>
+              </div>
+            ) : (
+              <span className="text-white/50">Select token</span>
+            )}
+            <ChevronUpDownIcon className="h-5 w-5" />
+          </button>
 
           <input
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="Amount"
+            placeholder="0.0"
             className="w-full bg-white/5 rounded-lg p-4 text-white placeholder-white/50 outline-none"
           />
-        </div>
 
-        {/* To Token Selection */}
-        <div className="mb-6">
-          <Listbox value={toToken} onChange={setToToken}>
-            <div className="relative">
-              <Listbox.Button className="w-full bg-white/5 rounded-lg p-4 text-left text-white flex justify-between items-center">
-                <span>{toToken?.symbol || 'Select token'}</span>
-                <ChevronUpDownIcon className="h-5 w-5" />
-              </Listbox.Button>
-              <Transition
-                enter="transition duration-100 ease-out"
-                enterFrom="transform scale-95 opacity-0"
-                enterTo="transform scale-100 opacity-100"
-                leave="transition duration-75 ease-out"
-                leaveFrom="transform scale-100 opacity-100"
-                leaveTo="transform scale-95 opacity-0"
-              >
-                <Listbox.Options className="absolute z-10 w-full mt-1 bg-white/10 backdrop-blur-lg rounded-lg py-1 max-h-60 overflow-auto">
-                  {isLoading ? (
-                    <div className="p-4 text-white text-center">
-                      <svg className="animate-spin h-5 w-5 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Loading tokens...
-                    </div>
-                  ) : tokens.length > 0 ? (
-                    tokens.map((token) => (
-                      <Listbox.Option
-                        key={token.symbol}
-                        value={token}
-                        className={({ active }) =>
-                          `${
-                            active ? 'bg-white/20' : ''
-                          } cursor-pointer select-none p-4 text-white`
-                        }
-                      >
-                        {token.symbol}
-                      </Listbox.Option>
-                    ))
-                  ) : (
-                    <div className="p-4 text-white text-center">
-                      {error ? 'Error loading tokens' : 'No tokens available'}
-                    </div>
-                  )}
-                </Listbox.Options>
-              </Transition>
-            </div>
-          </Listbox>
+          <button
+            onClick={() => setIsSelectingTo(true)}
+            className="w-full bg-white/5 hover:bg-white/10 rounded-lg p-4 text-left text-white flex items-center justify-between"
+          >
+            {toToken ? (
+              <div className="flex items-center">
+                <img
+                  src={toToken.logoUrl}
+                  alt={toToken.symbol}
+                  className="w-6 h-6 mr-2"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/DEFAULT.svg';
+                  }}
+                />
+                <span>{toToken.symbol}</span>
+              </div>
+            ) : (
+              <span className="text-white/50">Select token</span>
+            )}
+            <ChevronUpDownIcon className="h-5 w-5" />
+          </button>
         </div>
 
         <button
-          onClick={handleSwap}
+          onClick={() => {
+            if (fromToken && toToken && amount) {
+              alert(`Swapping ${amount} ${fromToken.symbol} for ${toToken.symbol}`);
+            }
+          }}
           disabled={!fromToken || !toToken || !amount}
-          className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white rounded-lg p-4 font-bold transition-colors"
+          className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white rounded-lg p-4 font-bold transition-colors mt-6"
         >
           Swap
         </button>
@@ -204,6 +214,24 @@ export default function Home() {
             Rate: 1 {fromToken.symbol} = {(toToken.price / fromToken.price).toFixed(6)} {toToken.symbol}
           </div>
         )}
+
+        <TokenModal
+          isOpen={isSelectingFrom}
+          onClose={() => {
+            setIsSelectingFrom(false);
+            setSearchQuery('');
+          }}
+          onSelect={setFromToken}
+        />
+
+        <TokenModal
+          isOpen={isSelectingTo}
+          onClose={() => {
+            setIsSelectingTo(false);
+            setSearchQuery('');
+          }}
+          onSelect={setToToken}
+        />
       </div>
     </div>
   );
