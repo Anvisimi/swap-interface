@@ -3,11 +3,6 @@ import { useState, useEffect } from 'react';
 import { ChevronUpDownIcon, XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 
-interface PriceData {
-  currency: string;
-  price: string | number;
-}
-
 interface Token {
   symbol: string;
   price: number;
