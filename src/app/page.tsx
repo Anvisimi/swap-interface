@@ -20,8 +20,8 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSelectingFrom, setIsSelectingFrom] = useState(false);
   const [isSelectingTo, setIsSelectingTo] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Calculate the exchange rate and values
   const getExchangeRate = () => {
     if (!fromToken || !toToken) return null;
     return toToken.price / fromToken.price;
@@ -88,6 +88,20 @@ export default function Home() {
 
     fetchPrices();
   }, []);
+
+  const handleSwap = () => {
+    if (!fromToken || !toToken || !amount) {
+      setFormError('Please select both tokens and enter an amount.');
+      return;
+    }
+    if (parseFloat(amount) <= 0) {
+      setFormError('Amount must be greater than zero.');
+      return;
+    }
+    setFormError(null);
+    alert(`Swapping ${amount} ${fromToken.symbol} for ${getToAmount()} ${toToken.symbol}`);
+    // Implement follow-up actions here, e.g., API call to perform the swap
+  };
 
   const filteredTokens = tokens.filter(token => 
     token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -253,12 +267,14 @@ export default function Home() {
           </div>
         </div>
 
+        {formError && (
+          <div className="mt-4 p-4 bg-red-500/20 rounded-lg text-white text-sm">
+            {formError}
+          </div>
+        )}
+
         <button
-          onClick={() => {
-            if (fromToken && toToken && amount) {
-              alert(`Swapping ${amount} ${fromToken.symbol} for ${getToAmount()} ${toToken.symbol}`);
-            }
-          }}
+          onClick={handleSwap}
           disabled={!fromToken || !toToken || !amount}
           className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white rounded-lg p-4 font-bold transition-colors mt-6"
         >
