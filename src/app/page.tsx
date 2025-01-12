@@ -22,6 +22,7 @@ export default function Home() {
       setIsLoading(true);
       setError(null);
       try {
+        // Using the API route instead of direct URL
         const response = await axios.get('/api/prices');
         console.log('Raw API response:', response.data);
 
