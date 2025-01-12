@@ -15,7 +15,16 @@ const nextConfig = {
         ]
       }
     ];
-  }
+  },
+  // Add this section to handle API timeouts
+  serverRuntimeConfig: {
+    // Will only be available on the server side
+    apiTimeout: 30000, // 30 seconds
+  },
+  publicRuntimeConfig: {
+    // Will be available on both server and client
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'https://interview.switcheo.com',
+  },
 };
 
 module.exports = nextConfig;
