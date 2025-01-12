@@ -14,9 +14,11 @@ export default function Home() {
   const [fromToken, setFromToken] = useState<Token | null>(null);
   const [toToken, setToToken] = useState<Token | null>(null);
   const [amount, setAmount] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchPrices = async () => {
+      setIsLoading(true);
       try {
         const response = await axios.get('https://interview.switcheo.com/prices.json');
         const validTokens = Object.entries(response.data)
@@ -25,9 +27,12 @@ export default function Home() {
             symbol,
             price: Number(price)
           }));
+        console.log('Fetched tokens:', validTokens); // Debug log
         setTokens(validTokens);
       } catch (error) {
         console.error('Error fetching prices:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchPrices();
@@ -49,9 +54,9 @@ export default function Home() {
         <div className="space-y-4 mb-4">
           <Listbox value={fromToken} onChange={setFromToken}>
             <div className="relative">
-              <Listbox.Button className="w-full bg-white/5 rounded-lg p-4 text-left text-white">
+              <Listbox.Button className="w-full bg-white/5 rounded-lg p-4 text-left text-white flex justify-between items-center">
                 <span>{fromToken?.symbol || 'Select token'}</span>
-                <ChevronUpDownIcon className="h-5 w-5 absolute right-4 top-4" />
+                <ChevronUpDownIcon className="h-5 w-5" />
               </Listbox.Button>
               <Transition
                 enter="transition duration-100 ease-out"
@@ -61,18 +66,26 @@ export default function Home() {
                 leaveFrom="transform scale-100 opacity-100"
                 leaveTo="transform scale-95 opacity-0"
               >
-                <Listbox.Options className="absolute w-full mt-1 bg-white/10 backdrop-blur-lg rounded-lg py-1 max-h-60 overflow-auto">
-                  {tokens.map((token) => (
-                    <Listbox.Option
-                      key={token.symbol}
-                      value={token}
-                      className={({ active }) =>
-                        `${active ? 'bg-white/20' : ''} cursor-pointer select-none p-4 text-white`
-                      }
-                    >
-                      {token.symbol}
-                    </Listbox.Option>
-                  ))}
+                <Listbox.Options className="absolute z-10 w-full mt-1 bg-white/10 backdrop-blur-lg rounded-lg py-1 max-h-60 overflow-auto">
+                  {isLoading ? (
+                    <div className="p-4 text-white text-center">Loading...</div>
+                  ) : tokens.length > 0 ? (
+                    tokens.map((token) => (
+                      <Listbox.Option
+                        key={token.symbol}
+                        value={token}
+                        className={({ active }) =>
+                          `${
+                            active ? 'bg-white/20' : ''
+                          } cursor-pointer select-none p-4 text-white`
+                        }
+                      >
+                        {token.symbol}
+                      </Listbox.Option>
+                    ))
+                  ) : (
+                    <div className="p-4 text-white text-center">No tokens available</div>
+                  )}
                 </Listbox.Options>
               </Transition>
             </div>
@@ -91,9 +104,9 @@ export default function Home() {
         <div className="mb-6">
           <Listbox value={toToken} onChange={setToToken}>
             <div className="relative">
-              <Listbox.Button className="w-full bg-white/5 rounded-lg p-4 text-left text-white">
+              <Listbox.Button className="w-full bg-white/5 rounded-lg p-4 text-left text-white flex justify-between items-center">
                 <span>{toToken?.symbol || 'Select token'}</span>
-                <ChevronUpDownIcon className="h-5 w-5 absolute right-4 top-4" />
+                <ChevronUpDownIcon className="h-5 w-5" />
               </Listbox.Button>
               <Transition
                 enter="transition duration-100 ease-out"
@@ -103,18 +116,26 @@ export default function Home() {
                 leaveFrom="transform scale-100 opacity-100"
                 leaveTo="transform scale-95 opacity-0"
               >
-                <Listbox.Options className="absolute w-full mt-1 bg-white/10 backdrop-blur-lg rounded-lg py-1 max-h-60 overflow-auto">
-                  {tokens.map((token) => (
-                    <Listbox.Option
-                      key={token.symbol}
-                      value={token}
-                      className={({ active }) =>
-                        `${active ? 'bg-white/20' : ''} cursor-pointer select-none p-4 text-white`
-                      }
-                    >
-                      {token.symbol}
-                    </Listbox.Option>
-                  ))}
+                <Listbox.Options className="absolute z-10 w-full mt-1 bg-white/10 backdrop-blur-lg rounded-lg py-1 max-h-60 overflow-auto">
+                  {isLoading ? (
+                    <div className="p-4 text-white text-center">Loading...</div>
+                  ) : tokens.length > 0 ? (
+                    tokens.map((token) => (
+                      <Listbox.Option
+                        key={token.symbol}
+                        value={token}
+                        className={({ active }) =>
+                          `${
+                            active ? 'bg-white/20' : ''
+                          } cursor-pointer select-none p-4 text-white`
+                        }
+                      >
+                        {token.symbol}
+                      </Listbox.Option>
+                    ))
+                  ) : (
+                    <div className="p-4 text-white text-center">No tokens available</div>
+                  )}
                 </Listbox.Options>
               </Transition>
             </div>
