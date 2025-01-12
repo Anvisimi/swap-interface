@@ -1,11 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { Listbox, Transition } from '@headlessui/react';
 import { ChevronUpDownIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
-
-// ... existing imports ...
 
 interface Token {
   symbol: string;
@@ -23,7 +20,7 @@ export default function Home() {
       try {
         const response = await axios.get('https://interview.switcheo.com/prices.json');
         const validTokens = Object.entries(response.data)
-          .filter(([_, price]) => price && Number(price) > 0)
+          .filter(([, price]) => price && Number(price) > 0)
           .map(([symbol, price]) => ({
             symbol,
             price: Number(price)
