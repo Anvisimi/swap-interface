@@ -10,6 +10,12 @@ interface Token {
   logoUrl?: string;
 }
 
+interface TokenModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelect: (token: Token) => void;
+}
+
 export default function Home() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [fromToken, setFromToken] = useState<Token | null>(null);
@@ -34,9 +40,19 @@ export default function Home() {
   };
 
   const getUSDValue = (token: Token | null, tokenAmount: string) => {
-    if (!token || !tokenAmount) return '$0.00';
+    if (!token || !tokenAmount || isNaN(parseFloat(tokenAmount))) return '$0.00';
     const value = parseFloat(tokenAmount) * token.price;
     return `$${value.toFixed(2)}`;
+  };
+
+  const handleAmountChange = (value: string) => {
+    // Only allow positive numbers or empty string
+    if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
+      setAmount(value);
+      setFormError(null);
+    } else {
+      setFormError('Amount must be greater than zero.');
+    }
   };
 
   useEffect(() => {
@@ -100,7 +116,6 @@ export default function Home() {
     }
     setFormError(null);
     alert(`Swapping ${amount} ${fromToken.symbol} for ${getToAmount()} ${toToken.symbol}`);
-    // Implement follow-up actions here, e.g., API call to perform the swap
   };
 
   const filteredTokens = tokens.filter(token => 
@@ -108,11 +123,7 @@ export default function Home() {
     token.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const TokenModal = ({ isOpen, onClose, onSelect }: { 
-    isOpen: boolean; 
-    onClose: () => void; 
-    onSelect: (token: Token) => void;
-  }) => {
+  const TokenModal: React.FC<TokenModalProps> = ({ isOpen, onClose, onSelect }) => {
     if (!isOpen) return null;
 
     return (
@@ -201,7 +212,9 @@ export default function Home() {
               <input
                 type="number"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => handleAmountChange(e.target.value)}
+                min="0"
+                step="any"
                 placeholder="0.0"
                 className="w-full bg-transparent text-2xl text-white placeholder-white/50 outline-none"
               />
@@ -275,13 +288,13 @@ export default function Home() {
 
         <button
           onClick={handleSwap}
-          disabled={!fromToken || !toToken || !amount}
+          disabled={!fromToken || !toToken || !amount || parseFloat(amount) <= 0}
           className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white rounded-lg p-4 font-bold transition-colors mt-6"
         >
           Swap
         </button>
 
-        {fromToken && toToken && amount && (
+        {fromToken && toToken && amount && parseFloat(amount) > 0 && (
           <div className="mt-4 text-white/80 text-sm">
             1 {fromToken.symbol} = {getExchangeRate()?.toFixed(6)} {toToken.symbol}
           </div>
