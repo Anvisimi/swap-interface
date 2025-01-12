@@ -26,21 +26,34 @@ export default function Home() {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await axios.get('/api/prices');
-        
+        // Directly fetch from the API URL
+        const response = await axios.get('https://interview.switcheo.com/prices.json', {
+          headers: {
+            'Accept': 'application/json',
+          }
+        });
+        console.log('Raw API response:', response.data);
+
+        // Transform the data
         const validTokens = Object.entries(response.data)
           .map(([symbol, price]) => ({
             symbol,
-            price: Number(price),
+            price: typeof price === 'string' ? parseFloat(price) : Number(price),
             name: symbol,
             logoUrl: `https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/${symbol}.svg`
           }))
           .filter(token => !isNaN(token.price) && token.price > 0);
 
+        console.log('Processed tokens:', validTokens);
+        
+        if (validTokens.length === 0) {
+          throw new Error('No valid tokens available');
+        }
+        
         setTokens(validTokens);
       } catch (error) {
         console.error('Error fetching prices:', error);
-        setError('Failed to load tokens');
+        setError(error instanceof Error ? error.message : 'Failed to load tokens');
       } finally {
         setIsLoading(false);
       }
@@ -49,6 +62,7 @@ export default function Home() {
     fetchPrices();
   }, []);
 
+  // Rest of the component remains the same...
   const filteredTokens = tokens.filter(token => 
     token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
     token.name?.toLowerCase().includes(searchQuery.toLowerCase())
