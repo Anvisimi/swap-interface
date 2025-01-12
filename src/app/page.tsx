@@ -21,6 +21,24 @@ export default function Home() {
   const [isSelectingFrom, setIsSelectingFrom] = useState(false);
   const [isSelectingTo, setIsSelectingTo] = useState(false);
 
+  // Calculate the exchange rate and values
+  const getExchangeRate = () => {
+    if (!fromToken || !toToken) return null;
+    return toToken.price / fromToken.price;
+  };
+
+  const getToAmount = () => {
+    const rate = getExchangeRate();
+    if (!rate || !amount) return '';
+    return (parseFloat(amount) * rate).toFixed(6);
+  };
+
+  const getUSDValue = (token: Token | null, tokenAmount: string) => {
+    if (!token || !tokenAmount) return '$0.00';
+    const value = parseFloat(tokenAmount) * token.price;
+    return `$${value.toFixed(2)}`;
+  };
+
   useEffect(() => {
     const fetchPrices = async () => {
       setIsLoading(true);
@@ -32,15 +50,10 @@ export default function Home() {
           }
         });
         
-        // Debug log the raw response
-        console.log('Raw API response:', response.data);
-
-        // Ensure we have an array or object to work with
         if (!response.data || (typeof response.data !== 'object' && !Array.isArray(response.data))) {
           throw new Error('Invalid API response format');
         }
 
-        // Convert response to array if it's an object
         const pricesArray = Array.isArray(response.data) 
           ? response.data 
           : Object.entries(response.data).map(([currency, price]) => ({
@@ -48,7 +61,6 @@ export default function Home() {
               price
             }));
 
-        // Transform and validate the data
         const validTokens = pricesArray
           .filter(item => {
             const price = typeof item.price === 'string' ? parseFloat(item.price) : Number(item.price);
@@ -60,8 +72,6 @@ export default function Home() {
             name: item.currency,
             logoUrl: `https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/${item.currency}.svg`
           }));
-
-        console.log('Processed tokens:', validTokens);
         
         if (validTokens.length === 0) {
           throw new Error('No valid tokens available');
@@ -84,11 +94,7 @@ export default function Home() {
     token.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const TokenModal = ({ 
-    isOpen, 
-    onClose, 
-    onSelect 
-  }: { 
+  const TokenModal = ({ isOpen, onClose, onSelect }: { 
     isOpen: boolean; 
     onClose: () => void; 
     onSelect: (token: Token) => void;
@@ -172,63 +178,85 @@ export default function Home() {
         )}
         
         <div className="space-y-4">
-          <button
-            onClick={() => setIsSelectingFrom(true)}
-            className="w-full bg-white/5 hover:bg-white/10 rounded-lg p-4 text-left text-white flex items-center justify-between"
-          >
-            {fromToken ? (
-              <div className="flex items-center">
-                <img
-                  src={fromToken.logoUrl}
-                  alt={fromToken.symbol}
-                  className="w-6 h-6 mr-2"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/DEFAULT.svg';
-                  }}
-                />
-                <span>{fromToken.symbol}</span>
-              </div>
-            ) : (
-              <span className="text-white/50">Select token</span>
-            )}
-            <ChevronUpDownIcon className="h-5 w-5" />
-          </button>
+          <div className="bg-white/5 rounded-lg p-4">
+            <div className="flex justify-between mb-2">
+              <span className="text-white/50 text-sm">You pay</span>
+              <span className="text-white/50 text-sm">{getUSDValue(fromToken, amount)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.0"
+                className="w-full bg-transparent text-2xl text-white placeholder-white/50 outline-none"
+              />
+              <button
+                onClick={() => setIsSelectingFrom(true)}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-full px-3 py-1"
+              >
+                {fromToken ? (
+                  <>
+                    <img
+                      src={fromToken.logoUrl}
+                      alt={fromToken.symbol}
+                      className="w-6 h-6"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/DEFAULT.svg';
+                      }}
+                    />
+                    <span className="text-white font-medium">{fromToken.symbol}</span>
+                  </>
+                ) : (
+                  <span className="text-white/50">Select token</span>
+                )}
+                <ChevronUpDownIcon className="h-5 w-5 text-white/50" />
+              </button>
+            </div>
+          </div>
 
-          <input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.0"
-            className="w-full bg-white/5 rounded-lg p-4 text-white placeholder-white/50 outline-none"
-          />
-
-          <button
-            onClick={() => setIsSelectingTo(true)}
-            className="w-full bg-white/5 hover:bg-white/10 rounded-lg p-4 text-left text-white flex items-center justify-between"
-          >
-            {toToken ? (
-              <div className="flex items-center">
-                <img
-                  src={toToken.logoUrl}
-                  alt={toToken.symbol}
-                  className="w-6 h-6 mr-2"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/DEFAULT.svg';
-                  }}
-                />
-                <span>{toToken.symbol}</span>
-              </div>
-            ) : (
-              <span className="text-white/50">Select token</span>
-            )}
-            <ChevronUpDownIcon className="h-5 w-5" />
-          </button>
+          <div className="bg-white/5 rounded-lg p-4">
+            <div className="flex justify-between mb-2">
+              <span className="text-white/50 text-sm">You receive</span>
+              <span className="text-white/50 text-sm">{getUSDValue(toToken, getToAmount())}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={getToAmount()}
+                readOnly
+                placeholder="0.0"
+                className="w-full bg-transparent text-2xl text-white placeholder-white/50 outline-none"
+              />
+              <button
+                onClick={() => setIsSelectingTo(true)}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-full px-3 py-1"
+              >
+                {toToken ? (
+                  <>
+                    <img
+                      src={toToken.logoUrl}
+                      alt={toToken.symbol}
+                      className="w-6 h-6"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/DEFAULT.svg';
+                      }}
+                    />
+                    <span className="text-white font-medium">{toToken.symbol}</span>
+                  </>
+                ) : (
+                  <span className="text-white/50">Select token</span>
+                )}
+                <ChevronUpDownIcon className="h-5 w-5 text-white/50" />
+              </button>
+            </div>
+          </div>
         </div>
 
         <button
           onClick={() => {
             if (fromToken && toToken && amount) {
-              alert(`Swapping ${amount} ${fromToken.symbol} for ${toToken.symbol}`);
+              alert(`Swapping ${amount} ${fromToken.symbol} for ${getToAmount()} ${toToken.symbol}`);
             }
           }}
           disabled={!fromToken || !toToken || !amount}
@@ -239,7 +267,7 @@ export default function Home() {
 
         {fromToken && toToken && amount && (
           <div className="mt-4 text-white/80 text-sm">
-            Rate: 1 {fromToken.symbol} = {(toToken.price / fromToken.price).toFixed(6)} {toToken.symbol}
+            1 {fromToken.symbol} = {getExchangeRate()?.toFixed(6)} {toToken.symbol}
           </div>
         )}
 
