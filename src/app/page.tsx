@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Listbox, Transition } from '@headlessui/react';
 import { ChevronUpDownIcon, XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 
@@ -29,12 +28,11 @@ export default function Home() {
       try {
         const response = await axios.get('/api/prices');
         
-        // Transform the data to match Uniswap-like format
         const validTokens = Object.entries(response.data)
           .map(([symbol, price]) => ({
             symbol,
             price: Number(price),
-            name: symbol, // You can add full names if available
+            name: symbol,
             logoUrl: `https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/${symbol}.svg`
           }))
           .filter(token => !isNaN(token.price) && token.price > 0);
