@@ -30,7 +30,8 @@ export default function Home() {
 
   const getExchangeRate = () => {
     if (!fromToken || !toToken) return null;
-    return toToken.price / fromToken.price;
+    // Calculate how many toTokens you get for 1 fromToken
+    return fromToken.price / toToken.price;
   };
 
   const getToAmount = () => {
@@ -43,13 +44,9 @@ export default function Home() {
     if (!token || !tokenAmount || isNaN(parseFloat(tokenAmount))) return '$0.00';
     
     const amountNum = parseFloat(tokenAmount);
-    if (token.symbol === 'USD') {
-      return `$${amountNum.toFixed(2)}`;
-    }
-    
-    // Convert to USD based on token price
+    // Direct multiplication with USD price
     const usdValue = amountNum * token.price;
-    return `$${usdValue.toFixed(2)}`;
+    return `$${usdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const handleAmountChange = (value: string) => {
