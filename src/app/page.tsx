@@ -15,26 +15,52 @@ export default function Home() {
   const [toToken, setToToken] = useState<Token | null>(null);
   const [amount, setAmount] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPrices = async () => {
       setIsLoading(true);
+      setError(null);
       try {
-        const response = await axios.get('https://interview.switcheo.com/prices.json');
+        const response = await axios.get('/api/prices');
+        console.log('Raw API response:', response.data);
+
         const validTokens = Object.entries(response.data)
-          .filter(([, price]) => price && Number(price) > 0)
-          .map(([symbol, price]) => ({
-            symbol,
-            price: Number(price)
-          }));
-        console.log('Fetched tokens:', validTokens); // Debug log
+          .filter(([symbol, price]) => {
+            console.log(`Checking token ${symbol} with price ${price}`);
+            return price && Number(price) > 0;
+          })
+          .map(([symbol, price]) => {
+            console.log(`Adding token ${symbol} with price ${Number(price)}`);
+            return {
+              symbol,
+              price: Number(price)
+            };
+          });
+
+        console.log('Processed tokens:', validTokens);
+        
+        if (validTokens.length === 0) {
+          setError('No valid tokens found after filtering');
+        }
+        
         setTokens(validTokens);
       } catch (error) {
         console.error('Error fetching prices:', error);
+        if (axios.isAxiosError(error)) {
+          if (error.response) {
+            setError(`API Error: ${error.response.data}`);
+          } else if (error.request) {
+            setError(`Network Error: ${error.message}`);
+          }
+        } else {
+          setError('An unexpected error occurred');
+        }
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchPrices();
   }, []);
 
@@ -49,6 +75,12 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-purple-900 to-blue-900 flex items-center justify-center p-4">
       <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 w-full max-w-md shadow-xl">
         <h1 className="text-2xl font-bold text-white mb-6">Swap Tokens</h1>
+        
+        {error && (
+          <div className="mb-4 p-4 bg-red-500/20 rounded-lg text-white text-sm">
+            {error}
+          </div>
+        )}
         
         {/* From Token Selection */}
         <div className="space-y-4 mb-4">
@@ -68,7 +100,13 @@ export default function Home() {
               >
                 <Listbox.Options className="absolute z-10 w-full mt-1 bg-white/10 backdrop-blur-lg rounded-lg py-1 max-h-60 overflow-auto">
                   {isLoading ? (
-                    <div className="p-4 text-white text-center">Loading...</div>
+                    <div className="p-4 text-white text-center">
+                      <svg className="animate-spin h-5 w-5 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading tokens...
+                    </div>
                   ) : tokens.length > 0 ? (
                     tokens.map((token) => (
                       <Listbox.Option
@@ -84,7 +122,9 @@ export default function Home() {
                       </Listbox.Option>
                     ))
                   ) : (
-                    <div className="p-4 text-white text-center">No tokens available</div>
+                    <div className="p-4 text-white text-center">
+                      {error ? 'Error loading tokens' : 'No tokens available'}
+                    </div>
                   )}
                 </Listbox.Options>
               </Transition>
@@ -118,7 +158,13 @@ export default function Home() {
               >
                 <Listbox.Options className="absolute z-10 w-full mt-1 bg-white/10 backdrop-blur-lg rounded-lg py-1 max-h-60 overflow-auto">
                   {isLoading ? (
-                    <div className="p-4 text-white text-center">Loading...</div>
+                    <div className="p-4 text-white text-center">
+                      <svg className="animate-spin h-5 w-5 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading tokens...
+                    </div>
                   ) : tokens.length > 0 ? (
                     tokens.map((token) => (
                       <Listbox.Option
@@ -134,7 +180,9 @@ export default function Home() {
                       </Listbox.Option>
                     ))
                   ) : (
-                    <div className="p-4 text-white text-center">No tokens available</div>
+                    <div className="p-4 text-white text-center">
+                      {error ? 'Error loading tokens' : 'No tokens available'}
+                    </div>
                   )}
                 </Listbox.Options>
               </Transition>
