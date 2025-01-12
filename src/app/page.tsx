@@ -3,6 +3,11 @@ import { useState, useEffect } from 'react';
 import { ChevronUpDownIcon, XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 
+interface PriceData {
+  currency: string;
+  price: string | number;
+}
+
 interface Token {
   symbol: string;
   price: number;
@@ -26,23 +31,40 @@ export default function Home() {
       setIsLoading(true);
       setError(null);
       try {
-        // Directly fetch from the API URL
         const response = await axios.get('https://interview.switcheo.com/prices.json', {
           headers: {
             'Accept': 'application/json',
           }
         });
+        
+        // Debug log the raw response
         console.log('Raw API response:', response.data);
 
-        // Transform the data
-        const validTokens = Object.entries(response.data)
-          .map(([symbol, price]) => ({
-            symbol,
-            price: typeof price === 'string' ? parseFloat(price) : Number(price),
-            name: symbol,
-            logoUrl: `https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/${symbol}.svg`
-          }))
-          .filter(token => !isNaN(token.price) && token.price > 0);
+        // Ensure we have an array or object to work with
+        if (!response.data || (typeof response.data !== 'object' && !Array.isArray(response.data))) {
+          throw new Error('Invalid API response format');
+        }
+
+        // Convert response to array if it's an object
+        const pricesArray = Array.isArray(response.data) 
+          ? response.data 
+          : Object.entries(response.data).map(([currency, price]) => ({
+              currency,
+              price
+            }));
+
+        // Transform and validate the data
+        const validTokens = pricesArray
+          .filter(item => {
+            const price = typeof item.price === 'string' ? parseFloat(item.price) : Number(item.price);
+            return !isNaN(price) && price > 0;
+          })
+          .map(item => ({
+            symbol: item.currency,
+            price: typeof item.price === 'string' ? parseFloat(item.price) : Number(item.price),
+            name: item.currency,
+            logoUrl: `https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/${item.currency}.svg`
+          }));
 
         console.log('Processed tokens:', validTokens);
         
@@ -62,7 +84,6 @@ export default function Home() {
     fetchPrices();
   }, []);
 
-  // Rest of the component remains the same...
   const filteredTokens = tokens.filter(token => 
     token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
     token.name?.toLowerCase().includes(searchQuery.toLowerCase())
